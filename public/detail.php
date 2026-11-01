@@ -1,9 +1,12 @@
 <?php
-require_once 'config/database.php';
-require_once 'classes/Produk.php';
+require_once '../config/database.php';
+require_once '../classes/Produk.php';
+
+$database = new Database();
+$db = $database->getConnection();
 
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-$produkObj = new Produk();
+$produkObj = new Produk($db);
 $produk = $produkObj->readOne($id);
 
 if (!$produk) {
@@ -24,8 +27,9 @@ if (!$produk) {
     <h1>📋 Detail Produk</h1>
     <div class="product-detail">
         <div class="product-image">
-            <?php if ($produk['foto']): ?>
-                <img src="uploads/<?php echo htmlspecialchars($produk['foto']); ?>" alt="<?php echo htmlspecialchars($produk['nama']); ?>">
+            <?php if (!empty($produk['foto'])): ?>
+                <!-- Mundur ke root untuk mengambil folder uploads -->
+                <img src="../uploads/<?php echo htmlspecialchars($produk['foto']); ?>" alt="<?php echo htmlspecialchars($produk['nama']); ?>">
             <?php else: ?>
                 <div class="no-image-large">Tidak ada gambar</div>
             <?php endif; ?>
