@@ -1,6 +1,7 @@
 <?php
-require_once 'config/database.php';
-require_once 'classes/Produk.php';
+
+require_once '../classes/Database.php';
+require_once '../config/database.php';
 
 $produk = new Produk();
 $result = $produk->readAll();
