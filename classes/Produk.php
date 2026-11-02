@@ -1,92 +1,123 @@
 <?php
-require_once 'Database.php';
+require_once __DIR__ . '/Database.php';
 
 class Produk {
     private $db;
     private $conn;
-    private $id;
     private $nama;
     private $deskripsi;
     private $harga;
     private $foto;
 
-    public function __construct() {
+    public function __construct($conn = null) {
         $this->db = new Database();
-        $this->conn = $this->db->getConnection();
+
+        $this->conn = $conn instanceof PDO
+            ? $conn
+            : $this->db->getConnection();
     }
 
-    // Setter
     public function setNama($nama) { $this->nama = $nama; }
     public function setDeskripsi($deskripsi) { $this->deskripsi = $deskripsi; }
     public function setHarga($harga) { $this->harga = $harga; }
     public function setFoto($foto) { $this->foto = $foto; }
 
-    // Getter
-    public function getId() { return $this->id; }
-    public function getNama() { return $this->nama; }
-    public function getDeskripsi() { return $this->deskripsi; }
-    public function getHarga() { return $this->harga; }
-    public function getFoto() { return $this->foto; }
-
-    /** CREATE */
     public function create() {
-        $query = "INSERT INTO produk (nama, deskripsi, harga, foto) VALUES (?, ?, ?, ?)";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bind_param("ssds", $this->nama, $this->deskripsi, $this->harga, $this->foto);
-        return $stmt->execute();
+        $sql = "INSERT INTO produk (nama, deskripsi, harga, foto)
+                VALUES (:nama, :deskripsi, :harga, :foto)";
+        $stmt = $this->conn->prepare($sql);
+
+        return $stmt->execute([
+            ':nama' => $this->nama,
+            ':deskripsi' => $this->deskripsi,
+            ':harga' => $this->harga,
+            ':foto' => $this->foto
+        ]);
     }
 
-    /** READ ALL */
     public function readAll() {
-        $query = "SELECT * FROM produk ORDER BY created_at DESC";
-        return $this->conn->query($query);
+        return $this->conn->query(
+            "SELECT * FROM produk ORDER BY created_at DESC"
+        );
     }
 
-    /** READ ONE */
+    // Alias agar pemanggilan read() di kode lama tetap berfungsi.
+    public function read() {
+        return $this->readAll();
+    }
+
     public function readOne($id) {
-        $query = "SELECT * FROM produk WHERE id = ?";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        return $result->fetch_assoc();
+        $stmt = $this->conn->prepare(
+            "SELECT * FROM produk WHERE id = :id"
+        );
+        $stmt->execute([':id' => $id]);
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    /** UPDATE */
     public function update($id) {
-        $query = "UPDATE produk SET nama=?, deskripsi=?, harga=?, foto=? WHERE id=?";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bind_param("ssdsi", $this->nama, $this->deskripsi, $this->harga, $this->foto, $id);
-        return $stmt->execute();
+        $sql = "UPDATE produk
+                SET nama=:nama, deskripsi=:deskripsi,
+                    harga=:harga, foto=:foto
+                WHERE id=:id";
+
+        $stmt = $this->conn->prepare($sql);
+
+        return $stmt->execute([
+            ':nama' => $this->nama,
+            ':deskripsi' => $this->deskripsi,
+            ':harga' => $this->harga,
+            ':foto' => $this->foto,
+            ':id' => $id
+        ]);
     }
 
-    /** DELETE */
     public function delete($id) {
         $data = $this->readOne($id);
-        if ($data['foto'] && file_exists('uploads/' . $data['foto'])) {
-            unlink('uploads/' . $data['foto']);
+
+        if (!$data) {
+            return false;
         }
 
-        $query = "DELETE FROM produk WHERE id=?";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bind_param("i", $id);
-        return $stmt->execute();
+        if (!empty($data['foto']) &&
+            file_exists(__DIR__ . '/../public/uploads/' . $data['foto'])) {
+            unlink(__DIR__ . '/../public/uploads/' . $data['foto']);
+        }
+
+        $stmt = $this->conn->prepare(
+            "DELETE FROM produk WHERE id = :id"
+        );
+
+        return $stmt->execute([':id' => $id]);
     }
 
-    /** Upload Foto */
     public function uploadFoto($file) {
-        $target_dir = "uploads/";
-        $file_extension = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
-        $new_filename = uniqid() . '.' . $file_extension;
-        $target_file = $target_dir . $new_filename;
+        $targetDir = __DIR__ . '/../public/uploads/';
 
-        $allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
-        if (!in_array($file_extension, $allowed_types)) return false;
-        if ($file["size"] > 2000000) return false;
-
-        if (move_uploaded_file($file["tmp_name"], $target_file)) {
-            return $new_filename;
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0775, true);
         }
+
+        $extension = strtolower(
+            pathinfo($file['name'], PATHINFO_EXTENSION)
+        );
+
+        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+
+        if (!in_array($extension, $allowed) ||
+            $file['size'] > 2000000) {
+            return false;
+        }
+
+        $filename = uniqid() . '.' . $extension;
+
+        if (move_uploaded_file(
+            $file['tmp_name'],
+            $targetDir . $filename
+        )) {
+            return $filename;
+        }
+
         return false;
     }
 }
