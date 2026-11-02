@@ -1,35 +1,32 @@
+```php
 <?php
-require_once '../config/database.php';
-require_once '../classes/Produk.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../classes/Database.php';
+require_once __DIR__ . '/../classes/Produk.php';
 
-$id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$database = new Database();
+$db = $database->getConnection();
+$produk = new Produk($db);
 
-if ($id > 0) {
-    $database = new Database();
-    $db = $database->getConnection();
-    
-    $produk = new Produk($db);
+$id = (int) ($_GET['id'] ?? 0);
 
-    $data = $produk->readOne($id);
-
-    if ($produk->delete($id)) {
-
-        if ($data && !empty($data['foto'])) {
-            $file_path = '../uploads/' . $data['foto'];
-            if (file_exists($file_path)) {
-                unlink($file_path);
-            }
-        }
-        
-        header("Location: index.php");
-        exit();
-
-    } else {
-        die("Gagal menghapus produk.");
-    }
-
-} else {
-    header("Location: index.php");
-    exit();
+if ($id <= 0) {
+    header('Location: index.php');
+    exit;
 }
+
+$data = $produk->readOne($id);
+
+if (!$data) {
+    header('Location: index.php');
+    exit;
+}
+
+if ($produk->delete($id)) {
+    header('Location: index.php');
+    exit;
+}
+
+die('Gagal menghapus produk.');
 ?>
+```
