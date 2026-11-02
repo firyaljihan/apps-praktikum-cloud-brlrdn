@@ -1,3 +1,4 @@
+
 <?php
 require_once __DIR__ . '/Database.php';
 
@@ -11,20 +12,32 @@ class Produk {
 
     public function __construct($conn = null) {
         $this->db = new Database();
-
         $this->conn = $conn instanceof PDO
             ? $conn
             : $this->db->getConnection();
     }
 
-    public function setNama($nama) { $this->nama = $nama; }
-    public function setDeskripsi($deskripsi) { $this->deskripsi = $deskripsi; }
-    public function setHarga($harga) { $this->harga = $harga; }
-    public function setFoto($foto) { $this->foto = $foto; }
+    public function setNama($nama) {
+        $this->nama = $nama;
+    }
 
+    public function setDeskripsi($deskripsi) {
+        $this->deskripsi = $deskripsi;
+    }
+
+    public function setHarga($harga) {
+        $this->harga = $harga;
+    }
+
+    public function setFoto($foto) {
+        $this->foto = $foto;
+    }
+
+    // CREATE
     public function create() {
         $sql = "INSERT INTO produk (nama, deskripsi, harga, foto)
                 VALUES (:nama, :deskripsi, :harga, :foto)";
+
         $stmt = $this->conn->prepare($sql);
 
         return $stmt->execute([
@@ -35,13 +48,13 @@ class Produk {
         ]);
     }
 
+    // READ
     public function readAll() {
         return $this->conn->query(
-            "SELECT * FROM produk ORDER BY created_at DESC"
+            "SELECT * FROM produk ORDER BY id DESC"
         );
     }
 
-    // Alias agar pemanggilan read() di kode lama tetap berfungsi.
     public function read() {
         return $this->readAll();
     }
@@ -50,16 +63,26 @@ class Produk {
         $stmt = $this->conn->prepare(
             "SELECT * FROM produk WHERE id = :id"
         );
-        $stmt->execute([':id' => $id]);
+
+        $stmt->execute([':id' => (int)$id]);
 
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    // UPDATE - TIDAK MENAMBAHKAN BARIS BARU
     public function update($id) {
+        $id = (int)$id;
+
+        if ($id <= 0 || !$this->readOne($id)) {
+            return false;
+        }
+
         $sql = "UPDATE produk
-                SET nama=:nama, deskripsi=:deskripsi,
-                    harga=:harga, foto=:foto
-                WHERE id=:id";
+                SET nama = :nama,
+                    deskripsi = :deskripsi,
+                    harga = :harga,
+                    foto = :foto
+                WHERE id = :id";
 
         $stmt = $this->conn->prepare($sql);
 
@@ -72,6 +95,7 @@ class Produk {
         ]);
     }
 
+    // DELETE
     public function delete($id) {
         $data = $this->readOne($id);
 
@@ -79,23 +103,31 @@ class Produk {
             return false;
         }
 
-        if (!empty($data['foto']) &&
-            file_exists(__DIR__ . '/../public/uploads/' . $data['foto'])) {
-            unlink(__DIR__ . '/../public/uploads/' . $data['foto']);
-        }
-
         $stmt = $this->conn->prepare(
             "DELETE FROM produk WHERE id = :id"
         );
 
-        return $stmt->execute([':id' => $id]);
+        $hasil = $stmt->execute([':id' => (int)$id]);
+
+        if ($hasil && !empty($data['foto'])) {
+            $path = __DIR__ . '/../public/uploads/' . basename($data['foto']);
+
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+
+        return $hasil;
     }
 
+    // UPLOAD FOTO
     public function uploadFoto($file) {
-        $targetDir = __DIR__ . '/../public/uploads/';
-
-        if (!is_dir($targetDir)) {
-            mkdir($targetDir, 0775, true);
+        if (
+            !isset($file['error']) ||
+            $file['error'] !== UPLOAD_ERR_OK ||
+            $file['size'] > 2000000
+        ) {
+            return false;
         }
 
         $extension = strtolower(
@@ -104,12 +136,17 @@ class Produk {
 
         $allowed = ['jpg', 'jpeg', 'png', 'gif'];
 
-        if (!in_array($extension, $allowed) ||
-            $file['size'] > 2000000) {
+        if (!in_array($extension, $allowed, true)) {
             return false;
         }
 
-        $filename = uniqid() . '.' . $extension;
+        $targetDir = __DIR__ . '/../public/uploads/';
+
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0775, true);
+        }
+
+        $filename = uniqid('produk_', true) . '.' . $extension;
 
         if (move_uploaded_file(
             $file['tmp_name'],
