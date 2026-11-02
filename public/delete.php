@@ -1,31 +1,31 @@
+
 <?php
-require_once __DIR__ . '/../config/database.php';
+session_start();
+
 require_once __DIR__ . '/../classes/Database.php';
 require_once __DIR__ . '/../classes/Produk.php';
 
 $database = new Database();
-$db = $database->getConnection();
-$produk = new Produk($db);
+$produk = new Produk($database->getConnection());
 
-$id = (int) ($_GET['id'] ?? 0);
+$id = (int)($_GET['id'] ?? 0);
 
 if ($id <= 0) {
-    header('Location: index.php');
-    exit;
+    $_SESSION['notifikasi'] = [
+        'jenis' => 'error',
+        'pesan' => 'ID produk tidak valid.'
+    ];
+} elseif ($produk->delete($id)) {
+    $_SESSION['notifikasi'] = [
+        'jenis' => 'success',
+        'pesan' => 'Produk berhasil dihapus!'
+    ];
+} else {
+    $_SESSION['notifikasi'] = [
+        'jenis' => 'error',
+        'pesan' => 'Produk gagal dihapus atau tidak ditemukan.'
+    ];
 }
 
-$data = $produk->readOne($id);
-
-if (!$data) {
-    header('Location: index.php');
-    exit;
-}
-
-if ($produk->delete($id)) {
-    header('Location: index.php');
-    exit;
-}
-
-die('Gagal menghapus produk.');
-?>
-```
+header('Location: index.php');
+exit;
