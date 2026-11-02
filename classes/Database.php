@@ -1,44 +1,33 @@
 <?php
-/**
- * Class Database
- * Menangani koneksi ke database menggunakan MySQLi
- */
+require_once __DIR__ . '/../config/database.php';
+
 class Database {
-    private $host;
-    private $user;
-    private $pass;
-    private $dbname;
     private $conn;
 
     public function __construct() {
-        $this->host = DB_HOST;
-        $this->user = DB_USER;
-        $this->pass = DB_PASS;
-        $this->dbname = DB_NAME;
-        $this->connect();
-    }
+        $dir = dirname(DB_PATH);
 
-    private function connect() {
-        $this->conn = new mysqli(
-            $this->host,
-            $this->user,
-            $this->pass,
-            $this->dbname
-        );
-
-        if ($this->conn->connect_error) {
-            die("Connection failed: " . $this->conn->connect_error);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0775, true);
         }
+
+        $this->conn = new PDO('sqlite:' . DB_PATH);
+        $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $this->conn->exec("
+            CREATE TABLE IF NOT EXISTS produk (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nama TEXT NOT NULL,
+                deskripsi TEXT,
+                harga REAL NOT NULL,
+                foto TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
     }
 
     public function getConnection() {
         return $this->conn;
-    }
-
-    public function __destruct() {
-        if ($this->conn) {
-            $this->conn->close();
-        }
     }
 }
 ?>
