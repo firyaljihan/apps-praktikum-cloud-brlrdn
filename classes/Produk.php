@@ -33,7 +33,6 @@ class Produk {
         $this->foto = $foto;
     }
 
-    // CREATE
     public function create() {
         $sql = "INSERT INTO produk (nama, deskripsi, harga, foto)
                 VALUES (:nama, :deskripsi, :harga, :foto)";
@@ -48,7 +47,6 @@ class Produk {
         ]);
     }
 
-    // READ
     public function readAll() {
         return $this->conn->query(
             "SELECT * FROM produk ORDER BY id DESC"
@@ -69,7 +67,6 @@ class Produk {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    // UPDATE - TIDAK MENAMBAHKAN BARIS BARU
     public function update($id) {
         $id = (int)$id;
 
@@ -95,7 +92,6 @@ class Produk {
         ]);
     }
 
-    // DELETE
     public function delete($id) {
         $data = $this->readOne($id);
 
@@ -120,7 +116,6 @@ class Produk {
         return $hasil;
     }
 
-    // UPLOAD FOTO
     public function uploadFoto($file) {
         if (
             !isset($file['error']) ||
@@ -158,4 +153,3 @@ class Produk {
         return false;
     }
 }
-?>
